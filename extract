@@ -1,0 +1,55 @@
+<# 
+.SYNOPSIS
+Powershell command extracts multiple ZIP files and moves specified file types to a root folder.
+
+.DESCRIPTION
+This script extracts all ZIP files in a specified folder and moves selected file types (e.g., .ttf, .otf) to a root folder. It also removes empty subfolders if desired.
+
+.PARAMETER ZipFolderPath
+The path to the folder containing ZIP files.
+
+.PARAMETER RootFolderPath
+The path to the folder where extracted files and specified file types will be organized.
+
+.NOTES
+Author: Your Name
+#>
+
+param (
+    [string]$ZipFolderPath = "C:\path\to\your\zip\folder",
+    [string]$RootFolderPath = "C:\path\to\your\root\folder"
+)
+
+# Load the necessary assembly
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+# Create the root folder if it doesn't exist
+if (-Not (Test-Path -Path $RootFolderPath)) {
+    New-Item -ItemType Directory -Path $RootFolderPath
+}
+
+# Get all ZIP files in the folder
+$zipFiles = Get-ChildItem -Path $ZipFolderPath -Filter *.zip
+
+# Extract each ZIP file
+foreach ($zipFile in $zipFiles) {
+    $zipFilePath = $zipFile.FullName
+    $extractPath = Join-Path -Path $RootFolderPath -ChildPath ($zipFile.BaseName)
+    [System.IO.Compression.ZipFile]::ExtractToDirectory($zipFilePath, $extractPath)
+}
+
+# Get all font files in the subfolders and move them to the root folder
+$fontFiles = Get-ChildItem -Path $RootFolderPath -Recurse -Include *.ttf, *.otf
+foreach ($file in $fontFiles) {
+    Move-Item -Path $file.FullName -Destination $RootFolderPath -Force
+}
+
+# Optionally, remove empty subfolders
+$subFolders = Get-ChildItem -Path $RootFolderPath -Recurse -Directory
+foreach ($folder in $subFolders) {
+    if ((Get-ChildItem -Path $folder.FullName).Count -eq 0) {
+        Remove-Item -Path $folder.FullName -Force
+    }
+}
+
+Write-Output "All ZIP files have been extracted and fonts moved to the root folder."
